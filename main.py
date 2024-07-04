@@ -1,8 +1,25 @@
-from pytube import YouTube
 import os
+import shutil
+from pytube import YouTube
+from Extractor import Extractor
 import subprocess
 
-# Function to download YouTube video and audio, then merge them
+# Function to clear directory contents
+def clear_directory():
+    try:
+        os.remove("download/youtube_video.mp4")
+    except Exception as e:
+        print("no prev source to delete")
+    for filename in os.listdir("./peaks"):
+        file_path = os.path.join("./peaks", filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print(f"Failed to delete {file_path}. Reason: {e}")
+
 def download_youtube_video(url, output_path='.'):
     try:
         # Create a YouTube object
@@ -25,7 +42,7 @@ def download_youtube_video(url, output_path='.'):
         print("Audio download completed!")
 
         # Ensure a valid filename for the output file
-        output_file = os.path.join(output_path, f"/download/youtube_video.mp4")
+        output_file = os.path.join(output_path, f"./download/youtube_video.mp4")
 
         # Merge video and audio using ffmpeg
         command = [
@@ -42,8 +59,28 @@ def download_youtube_video(url, output_path='.'):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-# URL of the YouTube video
-url = 'https://www.youtube.com/watch?v=91sUAWUBfpE&t=8s'
+if __name__ == "__main__":
+    clear_directory()
+    yt_video_url = "https://www.youtube.com/watch?v=ipbfrPZd-x4"
 
-# Call the function to download and merge the video
-download_youtube_video(url)
+    duration_peak = 15 # in seconds / odd numbers
+
+    extractor = Extractor(yt_video_url)
+
+    svg_code = extractor.get_svg()
+
+    points = extractor.extract_points_from_svg(svg_code)
+    
+    peaks = extractor.find_peaks(points, 40)
+    print(peaks)
+    extractor.plot_svg(points)
+    extractor.plot_peaks(peaks)
+    extractor.plot_save_show()
+    
+    download_youtube_video(yt_video_url)
+
+    for i, (x,y) in enumerate(peaks):
+        x_in_sec = extractor.peaks_to_time(x)
+        m, s = divmod(x_in_sec, 60)
+
+        extractor.extract_part(x_in_sec - (duration_peak/2), x_in_sec + (duration_peak/2), str(i)+"_peak_at["+str(int(m))+"_"+str(int(s))+"]")
