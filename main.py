@@ -20,44 +20,33 @@ def clear_directory():
         except Exception as e:
             print(f"Failed to delete {file_path}. Reason: {e}")
 
-def download_youtube_video(url, output_path='.'):
+def download_youtube_video(url, output_path='./download'):
     try:
         # Create a YouTube object
         yt = YouTube(url)
         
         # Get the highest resolution video-only stream
         video_stream = yt.streams.filter(only_video=True, file_extension='mp4').order_by('resolution').desc().first()
-        # Get the highest quality audio-only stream
-        audio_stream = yt.streams.filter(only_audio=True, file_extension='mp4').order_by('abr').desc().first()
-
         # Download video and audio streams
         print(f"Downloading video for {yt.title}...")
-        video_file = os.path.join(output_path, 'video_temp.mp4')
-        video_stream.download(output_path=output_path, filename='video_temp.mp4')
+        video_stream.download(output_path=output_path, filename='youtube_video.mp4')
         print("Video download completed!")
-
-        print(f"Downloading audio for {yt.title}...")
-        audio_file = os.path.join(output_path, 'audio_temp.mp4')
-        audio_stream.download(output_path=output_path, filename='audio_temp.mp4')
-        print("Audio download completed!")
-
-        # Ensure a valid filename for the output file
-        output_file = os.path.join(output_path, f"./download/youtube_video.mp4")
-
-        # Merge video and audio using ffmpeg
-        command = [
-            'ffmpeg', '-i', video_file, '-i', audio_file, 
-            '-c', 'copy', output_file
-        ]
-        subprocess.run(command, check=True)
-
-        # Clean up temporary files
-        os.remove(video_file)
-        os.remove(audio_file)
-
-        print(f"Merge completed! File saved as {output_file}")
     except Exception as e:
         print(f"An error occurred: {e}")
+
+def get_video_length(video_path):
+    command = [
+        'ffprobe', '-v', 'error', '-show_entries', 
+        'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', video_path
+    ]
+    
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if result.returncode != 0:
+        print(f"Error occurred: {result.stderr}")
+        return None
+    
+    duration = float(result.stdout.strip())
+    return duration
 
 if __name__ == "__main__":
     clear_directory()
@@ -71,14 +60,14 @@ if __name__ == "__main__":
 
     points = extractor.extract_points_from_svg(svg_code)
     
-    peaks = extractor.find_peaks(points, 40)
+    peaks = extractor.find_peaks(points)
     print(peaks)
     extractor.plot_svg(points)
     extractor.plot_peaks(peaks)
     extractor.plot_save_show()
     
     download_youtube_video(yt_video_url)
-
+    extractor.video_info["duration"] = get_video_length("./download/youtube_video.mp4")
     for i, (x,y) in enumerate(peaks):
         x_in_sec = extractor.peaks_to_time(x)
         m, s = divmod(x_in_sec, 60)

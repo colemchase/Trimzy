@@ -44,16 +44,10 @@ class Extractor(object):
         except yt_dlp.utils.DownloadError as e:
             print(f'Failed to fetch formats. Reason: {e}')
 
-    def download_video(self, resolution=137):
+    def download_video(self):
         print("Launching video downloading...")
-        ydl_opts = {
-            'format': f"b[height={resolution}][ext=mp4]",
-            'quiet': True,
-            "nopart": True,
-            'outtmpl': "./download/youtube_video.%(ext)s"
-        }
         try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            with yt_dlp.YoutubeDL() as ydl:
                 self.video_info = ydl.extract_info(self.video_url)
         except yt_dlp.utils.DownloadError:
             print('Interrupt the download')
